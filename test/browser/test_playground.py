@@ -50,11 +50,16 @@ class PlaygroundTests(unittest.TestCase):
         self.page.locator('#plot [data-point]').first.wait_for()
 
     def tearDown(self):
-        if self.errors:
-            Path('test-results').mkdir(exist_ok=True)
-            self.page.screenshot(path=f'test-results/{self.id().split(".")[-1]}.png', full_page=True)
+        Path('test-results').mkdir(exist_ok=True)
+        self.page.screenshot(path=f'test-results/{self.id().split(".")[-1]}.png', full_page=True)
         self.page.close()
         self.assertEqual(self.errors, [], 'Browser JavaScript errors')
+
+    def test_visual_layouts(self):
+        Path('test-results').mkdir(exist_ok=True)
+        self.page.screenshot(path='test-results/desktop.png', full_page=True)
+        self.page.set_viewport_size({'width': 375, 'height': 950})
+        self.page.screenshot(path='test-results/mobile.png', full_page=True)
 
     def set_range(self, selector, value):
         self.page.locator(selector).evaluate('''(element, value) => {

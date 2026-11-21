@@ -35,9 +35,9 @@ jobs:
       - name: Browser behaviour and responsive checks
         run: python3 -m unittest discover -s test/browser -p 'test_*.py' -v
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: browser-failure-evidence
+          name: browser-evidence
           path: test-results/
           if-no-files-found: ignore
       - uses: actions/upload-pages-artifact@v3

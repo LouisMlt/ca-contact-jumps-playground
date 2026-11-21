@@ -1,5 +1,6 @@
 import { upperHull, support, supportSlope, hullHeight, schematicPoints, numericalPoints,
   cleanBlock, factorText, shortInteger, statesAtEpsilon, boundaryGaps, coordinateWindow } from './math.js';
+import { math, typesetStatic } from './typeset.js';
 
 const $ = id => document.getElementById(id);
 const escape = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -9,7 +10,7 @@ const axisFmt = n => n !== 0 && Math.abs(n) < .001 ? n.toExponential(1) : Number
 const colour = { teal: '#5ee0c2', gold: '#eac978', coral: '#ff939b', muted: '#899bb8', violet: '#b9a4f7' };
 const state = { scene: 'contacts', mode: 'numerical', alpha: 0.5, k: 1, count: 30, turn: 260,
   epsilon: 0.11, primes: 4, pinned: true, gaps: true, selected: null,
-  projection: 'coordinates', zoom: 1, center: null };
+  projection: 'coordinates', zoom: 1, center: null, blockStep: 1 };
 let data, current, timer = null, lastWidth = 0;
 
 function restore() {
@@ -21,6 +22,7 @@ function restore() {
   if (p.has('center') && Number.isFinite(Number(p.get('center')))) state.center = Number(p.get('center'));
   for (const key of ['pinned', 'gaps']) if (['true', 'false'].includes(p.get(key))) state[key] = p.get(key) === 'true';
   if (p.has('selected') && p.get('selected').length <= 600) state.selected = p.get('selected');
+  if ([1, 2, 3].includes(Number(p.get('blockStep')))) state.blockStep = Number(p.get('blockStep'));
   const bounds = { alpha: [0.1, 0.95], k: [1, 4], count: [12, 80], turn: [0, 1000], epsilon: [0.07, 0.24], primes: [2, 8] };
   for (const [key, [lo, hi]] of Object.entries(bounds)) if (p.has(key)) {
     const n = Number(p.get(key));
@@ -50,7 +52,7 @@ function plot(scene) {
   const displayed = residual ? boundaryGaps(points) : points;
   const window = coordinateWindow(displayed, state.scene === 'contacts' ? state.zoom : 1, state.center);
   if (state.zoom > 1) state.center = window.center;
-  const visible = window.visible;
+  const visible = window.visible.filter(p => state.scene !== 'block' || state.blockStep === 3 || p.block);
   // Reflow the drawing instead of shrinking a desktop SVG's text to a few pixels.
   const W = Math.max(300, Math.round($('plot').getBoundingClientRect().width) || 920);
   const mobile = W < 560, H = mobile ? 440 : 530;
@@ -73,37 +75,48 @@ function plot(scene) {
     const x = minX + dx * i / 4, y = minY + dy * i / 4;
     svg += `<path d="M${px(x)},${top}V${H-bottom} M${left},${py(y)}H${W-right}" stroke="#26354c" stroke-dasharray="2 7"/><text x="${px(x)}" y="${H-bottom+27}" fill="${colour.muted}" font-size="14" text-anchor="middle">${axisFmt(x)}</text><text x="${left-10}" y="${py(y)+4}" fill="${colour.muted}" font-size="14" text-anchor="end">${axisFmt(y)}</text>`;
   }
-  svg += `<text x="${W-right}" y="${H-13}" fill="#afbed5" font-size="14" text-anchor="end">${escape(scene.xLabel)}</text><text x="${left}" y="24" fill="#afbed5" font-size="14">${escape(residual ? 'Y − H(X) · actual gap' : scene.yLabel)}</text><path d="M${left},${top}V${H-bottom}H${W-right}" fill="none" stroke="#52617b"/>`;
+  const realCoordinates = state.scene === 'contacts' && state.mode === 'numerical';
+  const xAxis = realCoordinates ? `X(n) = (ln n)<tspan baseline-shift="super" font-size="10">${state.alpha.toFixed(2)}</tspan>` : escape(scene.xLabel);
+  const yAxis = residual ? 'Y − H(X) · actual gap' : realCoordinates ? `Y(n) = ρ(n)<tspan baseline-shift="super" font-size="10">${state.k}</tspan>` : escape(scene.yLabel);
+  svg += `<text x="${W-right}" y="${H-13}" fill="#afbed5" font-size="14" text-anchor="end">${xAxis}</text><text x="${left}" y="24" fill="#afbed5" font-size="14">${yAxis}</text><path d="M${left},${top}V${H-bottom}H${W-right}" fill="none" stroke="#52617b"/>`;
   svg += '<g clip-path="url(#chart-clip)">';
   if (state.scene === 'block') {
     const inner = points.filter(p => p.block);
-    svg += `<path d="${path(inner)}" fill="none" stroke="${colour.gold}" stroke-width="2.2"/><path d="${path([inner[0], inner.at(-1)])}" stroke="${colour.gold}" stroke-dasharray="6 5" opacity=".6"/>`;
-    svg += `<text x="${px(3)}" y="${py(3.35)}" text-anchor="middle" fill="${colour.gold}" font-size="16">s₁ &lt; s₂ &lt; ⋯ &lt; sᵣ</text>`;
+    svg += `<path d="${path(inner)}" fill="none" stroke="${colour.gold}" stroke-width="2.2"/>`;
+    if (state.blockStep >= 2) {
+      svg += `<path d="${path([inner[0], inner.at(-1)])}" stroke="${colour.gold}" stroke-dasharray="6 5" opacity=".8"/>`;
+      svg += `<text x="${px(3)}" y="${py(3.35)}" text-anchor="middle" fill="${colour.gold}" font-size="16">s₁ &lt; s₂ &lt; ⋯ &lt; sᵣ</text>`;
+    } else for (let i = 1; i < inner.length; i++) {
+      const a = inner[i-1], b = inner[i];
+      svg += `<text x="${px((a.x+b.x)/2)}" y="${py((a.y+b.y)/2)-20}" text-anchor="middle" fill="${colour.gold}" font-size="15">×p${'₀₁₂₃₄₅₆₇₈'[i]}</text>`;
+    }
   } else if (!residual) svg += `<path d="${path(points)}" fill="none" stroke="#60738f" stroke-width="1.3" opacity=".45"/>`;
-  if (!residual) svg += `<path d="${path(hull)}" fill="none" stroke="${colour.teal}" stroke-width="1.6" opacity=".3"/>`;
+  if (!residual && (state.scene !== 'block' || state.blockStep === 3)) svg += `<path d="${path(hull)}" fill="none" stroke="${colour.teal}" stroke-width="1.6" opacity=".6"/>`;
   const addLine = (l, color, opacity, width, dash = '') => `<path d="M${px(x0)},${py(l.lambda*x0+l.intercept)}L${px(x1)},${py(l.lambda*x1+l.intercept)}" fill="none" stroke="${color}" opacity="${opacity}" stroke-width="${width}" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
-  if (!residual && state.scene !== 'switches' && state.pinned) {
+  if (!residual && state.scene === 'contacts' && state.pinned) {
     const indices = [...new Set([0, Math.floor(hull.length / 2), hull.length - 1])];
     indices.forEach((i, j) => { svg += addLine(support(points, supportSlope(hull, i)), [colour.gold, colour.violet, colour.coral][j], .65, 1.6, '7 6'); });
   }
-  svg += residual ? `<path d="M${px(x0)},${py(0)}H${px(x1)}" stroke="${colour.teal}" stroke-width="2"/>` : addLine(line, colour.teal, .96, 2.7);
+  if (state.scene !== 'block') svg += residual ? `<path d="M${px(x0)},${py(0)}H${px(x1)}" stroke="${colour.teal}" stroke-width="2"/>` : addLine(line, colour.teal, .96, 2.7);
   if (residual) for (const p of visible) svg += `<path d="M${px(p.x)},${py(0)}V${py(p.y)}" stroke="${colour.coral}" stroke-dasharray="3 4" opacity=".5"/>`;
-  if (!residual && state.gaps && state.scene !== 'switches') for (const p of points) {
+  if (!residual && state.gaps && state.scene !== 'switches' && !(state.scene === 'block' && state.blockStep === 1)) for (const p of visible) {
     if (hullIds.has(p.id)) continue;
-    const h = hullHeight(hull, p.x);
+    const inner = state.scene === 'block' && state.blockStep === 2 ? points.filter(q => q.block) : null;
+    const h = inner ? hullHeight([inner[0], inner.at(-1)], p.x) : hullHeight(hull, p.x);
     if (h !== null && py(p.y) - py(h) > 8) svg += `<path d="M${px(p.x)},${py(h)+4}V${py(p.y)-8}" stroke="${colour.coral}" opacity=".55" stroke-dasharray="3 5"/><path d="M${px(p.x)-4},${py(h)}H${px(p.x)+4}" stroke="${colour.coral}" opacity=".7"/>`;
   }
   // Markers outside the viewport are omitted, but never omitted from support calculations.
   for (const [i, p] of visible.entries()) {
     const original = points.find(q => q.id === p.id);
-    const x = px(p.x), y = py(p.y), boundary = hullIds.has(p.id), touching = !residual && line.touching.includes(original), selected = state.selected === p.id;
-    const c = p.reference ? colour.gold : boundary ? colour.teal : colour.coral;
-    const description = p.reference ? 'reference competitor, excluded from contacts' : boundary ? (p.schematic ? 'supporting contact in this schematic' : 'finite-sample boundary candidate, not globally certified') : 'skipped point below the finite upper boundary';
+    const x = px(p.x), y = py(p.y), boundary = hullIds.has(p.id), touching = !residual && state.scene !== 'block' && line.touching.includes(original), selected = state.selected === p.id;
+    const ordinary = state.scene === 'block' && (state.blockStep === 1 || (state.blockStep === 2 && [0, state.primes].includes(p.index)));
+    const c = ordinary ? colour.muted : p.reference ? colour.gold : boundary ? colour.teal : colour.coral;
+    const description = ordinary ? 'constructed CA-state illustration, not a claimed contact' : p.reference ? 'reference competitor, excluded from contacts' : boundary ? (p.schematic ? 'supporting contact in this schematic' : 'finite-sample boundary candidate, not globally certified') : 'skipped point below the finite upper boundary';
     svg += `<g data-point="${escape(p.id)}" data-boundary="${boundary}" data-x="${original.x}" data-y="${original.y}" data-display-y="${p.y}" tabindex="0" role="button" aria-label="${escape(p.label)}: ${description}" ${selected ? 'aria-pressed="true"' : 'aria-pressed="false"'}><title>${escape(p.label)} — ${description}</title><circle class="point-hit" cx="${x}" cy="${y}" r="15" fill="transparent"/>`;
     if (touching) svg += `<circle cx="${x}" cy="${y}" r="13" fill="${c}" opacity=".11"/><circle cx="${x}" cy="${y}" r="12" fill="none" stroke="${c}" opacity=".45"/>`;
     svg += `<circle class="selection-halo" cx="${x}" cy="${y}" r="12" fill="none" stroke="${c}" stroke-width="2" opacity="${selected ? .8 : 0}"/>`;
     if (p.reference) svg += `<path d="M${x},${y-6}l6 6-6 6-6-6Z" fill="#0d1626" stroke="${c}" stroke-width="2"/>`;
-    else if (boundary) svg += `<circle cx="${x}" cy="${y}" r="5.7" fill="#0d1626" stroke="${c}" stroke-width="2.4"/>`;
+    else if (boundary || ordinary) svg += `<circle cx="${x}" cy="${y}" r="5.7" fill="${ordinary ? c : '#0d1626'}" stroke="${c}" stroke-width="2.4"/>`;
     else svg += `<path d="m${x-4.5},${y-4.5} 9 9m-9 0 9-9" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
     if (visible.length <= 14 || selected || touching || i === 0 || i === visible.length - 1) {
       const label = p.schematic ? p.label : shortInteger(p.label);
@@ -137,32 +150,43 @@ function headings() {
   if (contact) {
     $('plot-kind').textContent = numerical ? 'REAL CA DATA · FINITE SAMPLE · GLOBAL CONTACTS NOT CERTIFIED' : 'SCHEMATIC · CONSTRUCTED COORDINATES · NOT CA DATA';
     $('plot-title').textContent = residual ? 'Make the small gaps visible.' : numerical ? 'Real numbers. A finite window.' : 'A line can touch. A point can miss.';
-    $('formula').innerHTML = residual ? '<span>g(n) = Y(n) − H(X(n))</span><span>H = finite upper boundary</span><span>actual gaps, no multiplier</span>' : numerical ? '<span>X(n) = (ln n)<sup>α</sup></span><span>Y(n) = ρ(n)<sup>k</sup></span><span>maximise Y − λX</span>' : '<span>Constructed (X, Y) points</span><span>majorising lines</span><span>not a CA sequence</span>';
-    const scope = numerical ? `First ${state.count} numerical CA states from 55440. Lines support only this plotted sample; later CA states may invalidate them. The gold diamond is the excluded reference competitor. Rounded values are not certificates.` : 'Schematic geometry with deliberately constructed positions, not numerical CA values. These P-labelled points do not form a CA sequence and need not have increasing successive slopes.';
-    $('scope-note').textContent = scope + (residual ? ' Gap view subtracts the finite piecewise-linear upper boundary from the original Y values; it is a diagnostic projection, not the original coordinate plot or a new global-contact test.' : '');
+    $('formula').innerHTML = residual ? `${math(String.raw`g(n)=Y(n)-H(X(n))`)}<span>H = finite upper boundary</span><span>actual gaps</span>` : numerical ? `${math(String.raw`X(n)=(\log n)^\alpha`)}${math(String.raw`Y(n)=\rho(n)^k`)}${math(String.raw`\max\{Y-\lambda X\}`)}` : `<span>Constructed ${math('(X,Y)')} points</span><span>not a CA sequence</span>`;
+    const scope = numerical ? `First ${state.count} numerical CA states from 55440; later CA states may invalidate these supports. The gold diamond is the excluded reference. Rounded values are not certificates.` : 'Schematic geometry: constructed positions, not numerical CA values or a CA sequence. Successive slopes need not increase.';
+    $('scope-note').textContent = scope + (residual ? ' Diagnostic projection: subtract the finite upper boundary from Y; no global contacts are certified.' : '');
+    $('line-controls').hidden = residual;
     $('guide-label').textContent = residual ? 'TRUE GAPS, SEPARATELY SCALED' : numerical ? 'A FINITE PICTURE HAS LIMITS' : 'LOOK FOR THE GAP';
-    $('guide-text').textContent = residual ? 'The horizontal zero is the finite upper boundary after subtraction. A red cross below zero has an actual positive gap above it. Return to Coordinates to compare the supporting lines.' : numerical ? 'The points use actual CA data. Reveal small gaps or zoom in to inspect skipped states. Increasing slopes are a conclusion for the proof’s sufficiently large clean blocks, not a rule for arbitrary neighbouring CA integers.' : 'These P-labelled points are constructed for geometric intuition. Their successive slopes need not increase. The clean-block chapter separately illustrates the increasing-slope condition.';
+    $('guide-text').textContent = residual ? 'Below zero means a true gap. Return to Coordinates to turn the supporting line.' : numerical ? 'Click a cross, reveal its gap, or zoom in. Increasing slopes belong to sufficiently large clean blocks—not every run of CA states.' : 'The points are constructed for geometric intuition. The block chapter introduces the separate increasing-slope condition.';
     $('contact-legend').textContent = numerical ? 'finite-sample candidate' : 'supporting contact';
   } else if (state.scene === 'switches') {
     $('plot-kind').textContent = 'SMALL INTEGER EXAMPLES · NUMERICAL THRESHOLDS';
     $('plot-title').textContent = 'One parameter. Many prime switches.';
-    $('formula').innerHTML = '<span>x = ln n</span><span>y = ln ρ(n)</span><span>maximise y − εx</span>';
+    $('formula').innerHTML = `${math(String.raw`x=\log n`)}${math(String.raw`y=\log\rho(n)`)}${math(String.raw`\max\{y-\varepsilon x\}`)}`;
     $('scope-note').textContent = 'A finite classical-envelope illustration. Integer values and factorisations are exact; logarithms and tie locations are numerical. The red cross at 24 illustrates a number that is not CA.';
     $('guide-label').textContent = 'PAUSE ON A TIE';
     $('guide-text').textContent = 'At the 12–60 threshold, both neighbours maximise the objective. A little below it, 5 has entered. At the next switch, the exponent of 2 increases: 60 becomes 120.';
     $('contact-legend').textContent = 'classical envelope state';
   } else {
-    $('plot-kind').textContent = 'SCHEMATIC · A CLEAN BLOCK AND ITS BRACKETING CONTACTS';
-    $('plot-title').textContent = 'The primes enter. The contacts skip.';
-    $('formula').innerHTML = '<span>Nᵢ = N₀p₁⋯pᵢ</span><span>s₁ &lt; ⋯ &lt; sᵣ</span><span>p₁⋯pᵣ ∣ bⱼ₊₁ / bⱼ</span>';
-    $('scope-note').textContent = 'Schematic clean-block geometry and illustrative prime labels, not a computed clean cluster. Both block endpoints lie below the bracketing chord here; neither is claimed to be a contact.';
-    $('guide-label').textContent = 'THE BLOCK ENDPOINTS NEED NOT BE CONTACTS';
-    $('guide-text').textContent = 'Increasing slopes exclude the interior CA states. The argument brackets the whole block with consecutive contacts; divisibility carries every fresh prime into their quotient.';
-    $('contact-legend').textContent = 'bracketing contact';
+    $('plot-kind').textContent = `SCHEMATIC MECHANISM · STEP ${state.blockStep} OF 3 · NOT COMPUTED CA DATA`;
+    $('plot-title').textContent = ['Each step adds a fresh prime.', 'The slope condition excludes interiors.', 'Contacts bracket the whole block.'][state.blockStep-1];
+    $('formula').innerHTML = math([String.raw`N_i=N_0p_1\cdots p_i`,String.raw`s_1<s_2<\cdots<s_r`,String.raw`p_1\cdots p_r\mid\frac{b_{j+1}}{b_j}`][state.blockStep-1]);
+    $('scope-note').textContent = 'Schematic deduction, not a computed clean cluster. The positions are constructed and the primes are symbolic; this scene does not establish that such a block exists.';
+    $('guide-label').textContent = ['PRIME ENTRY', 'A CONDITION PROVED LATER IN THE ARGUMENT', 'TRANSFER THE PRIME FACTORS'][state.blockStep-1];
+    $('guide-text').textContent = ['Start at N₀. Each multiplication introduces one new prime; r is the total number of primes in this block.', 'Under the proof’s sufficiently large clean-block hypotheses, successive slopes increase. The interior points then lie below the block chord.', 'Consecutive contacts absorb the block. Divisibility transfers each of its r fresh primes to the contact quotient.'][state.blockStep-1];
+    $('block-step-text').textContent = ['pᵢ names the ith fresh prime. No numerical prime choices are being claimed here.', 'The yellow dashed line is a chord of this block. Its endpoints are not being claimed as contacts.', 'The teal endpoints represent the bracketing contacts; neither block endpoint needs to be a contact.'][state.blockStep-1];
+    $('contact-legend').textContent = state.blockStep === 3 ? 'bracketing contact' : 'CA state (schematic)';
+    $('line-legend').textContent = state.blockStep === 3 ? 'bracketing chord' : 'block chord';
     const block = cleanBlock(state.primes);
-    $('prime-tokens').innerHTML = block.primes.map(p => `<span>${p}</span>`).join('');
-    $('prime-product').textContent = block.product.toLocaleString('en-US');
+    $('prime-tokens').innerHTML = block.labels.map(p => `<span class="prime-label">${math(p)}</span>`).join('');
+    $('prime-product').innerHTML = math(String.raw`p_1\cdots p_r`);
+    $('block-product').hidden = state.blockStep !== 3;
+    document.querySelectorAll('[data-step]').forEach(b => { b.classList.toggle('active', Number(b.dataset.step) === state.blockStep); b.setAttribute('aria-pressed', String(Number(b.dataset.step) === state.blockStep)); });
   }
+  $('next-chapter').textContent = state.scene === 'block' && state.blockStep < 3 ? 'Next step' : 'Next chapter';
+  const entering = state.scene === 'block' && state.blockStep === 1;
+  $('skipped-legend').hidden = entering;
+  $('line-legend-item').hidden = entering;
+  $('gap-legend').hidden = state.scene === 'switches' || entering;
+  document.querySelector('.legend-contact').style.borderColor = state.scene === 'block' && state.blockStep < 3 ? colour.muted : colour.teal;
 }
 
 function inspector() {
@@ -174,7 +198,7 @@ function inspector() {
     html = `<p class="eyebrow">${states.length > 1 ? 'BOTH CHOICES AT THE SWITCH' : 'CLASSICAL STATE AT THIS ε'}</p><h3>${states.map(s => shortInteger(s.n)).join(' &amp; ')}</h3>${states.map(s => `<p class="number">${escape(factorText(s.factors))}</p>`).join('')}<p>Lower ε to admit more factors. Tie buttons set the floating-point threshold directly.</p>`;
     if (p.nonCA) html += '<p><strong>24 is not CA:</strong> beating 12 requires ε ≤ 0.09954, while beating 60 requires ε ≥ 0.12368. These conditions cannot overlap.</p>';
   } else if (state.scene === 'block') {
-    html = `<p class="eyebrow">THE QUOTIENT INHERITS THE PRIMES</p><h3>ω(bⱼ₊₁ / bⱼ) ≥ ${state.primes}</h3><p>The bracketing contacts absorb all ${state.primes} distinct fresh primes. There may be additional prime factors.</p><p class="number">bⱼ ∣ N₀ ∣ Nᵣ ∣ bⱼ₊₁</p><p>Adding points in this scene illustrates the mechanism; the theorem's unbounded conclusion needs its full argument.</p>`;
+    html = state.blockStep === 1 ? `<h3>${math(String.raw`N_i=N_{i-1}p_i`)}</h3><p>Each step adds one distinct prime. Here ${math(`r=${state.primes}`)}.</p>` : state.blockStep === 2 ? `<h3>${math(String.raw`s_1<\cdots<s_r`)}</h3><p>The red interiors lie below the yellow chord. This schematic assumes the slope condition; the theorem proves it for sufficiently large clean blocks.</p>` : `<h3>${math(String.raw`\omega\!\left(\frac{b_{j+1}}{b_j}\right)\ge ` + state.primes)}</h3><p>All ${state.primes} distinct fresh primes divide the quotient. Additional factors may occur.</p><p>${math(String.raw`b_j\mid N_0\mid N_r\mid b_{j+1}`)}</p>`;
   } else {
     const title = p.reference ? 'Reference competitor' : boundary ? (p.schematic ? 'A supporting contact' : 'Finite-sample candidate') : 'A skipped point';
     html = `<p class="eyebrow">CLICK ANY POINT TO INSPECT</p><h3>${title}</h3><p class="number">${p.schematic ? escape(p.label) : escape(shortInteger(p.n))}</p>`;
@@ -182,7 +206,7 @@ function inspector() {
     else if (!boundary) html += `<p>Gap to the finite upper boundary: <strong>${precise(h-p.y)}</strong>. This point cannot touch a line majorising even this finite set.</p>`;
     else html += `<p>${p.schematic ? 'One of three points touched by the pinned supports. Move λ to change which point the current line touches.' : 'This point supports a line within the plotted sample. That does not certify comparison with all CA integers.'}</p>`;
     html += `<dl class="coordinate-values"><dt>Original X</dt><dd>${precise(p.x)}</dd><dt>Original Y</dt><dd>${precise(p.y)}</dd></dl>`;
-    if (p.factors) html += `<p>Calculated from the stored CA integer and its exact prime factors, using floating-point logarithms.</p><details><summary>Exact integer and factorisation</summary><code>${escape(p.n)}<br>${escape(factorText(p.factors))}</code></details>`;
+    if (p.factors) html += `<details><summary>Exact integer and factorisation</summary><code>${escape(p.n)}<br>${escape(factorText(p.factors))}</code><p>X and Y use floating-point logarithms of the exact CA integer and its divisor sum.</p></details>`;
     const names = current.line.touching.map(q => q.schematic ? q.label : shortInteger(q.n));
     html += `<p>Current line touches ${names.map(escape).join(', ')}${current.line.touching.some(q => q.reference) ? ' (reference excluded)' : ''}.</p>`;
   }
@@ -220,6 +244,7 @@ function changeScene(scene) { stop(); state.scene = scene; state.selected = null
 document.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () => changeScene(b.dataset.scene)));
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { stop(); state.mode = b.dataset.mode; state.selected = null; state.zoom = 1; state.center = null; render(); }));
 document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { stop(); state.projection = b.dataset.view; render(); }));
+document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { state.blockStep = Number(b.dataset.step); render(); }));
 $('zoom-in').addEventListener('click', () => {
   stop(); const selected = current.points.find(p => p.id === state.selected);
   if (selected) state.center = selected.x;
@@ -247,11 +272,11 @@ $('animate').addEventListener('click', () => {
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   timer = setInterval(() => { state.turn = (state.turn + (reduced ? 90 : 7)) % 1001; state.selected = null; render(); }, reduced ? 1000 : 65);
 });
-$('reset').addEventListener('click', () => { stop(); Object.assign(state, { mode: 'numerical', alpha: .5, k: 1, count: 30, turn: 260, epsilon: .11, primes: 4, pinned: true, gaps: true, selected: null, projection: 'coordinates', zoom: 1, center: null }); render(); });
-$('next-chapter').addEventListener('click', () => { const scenes = ['switches', 'contacts', 'block']; changeScene(scenes[(scenes.indexOf(state.scene)+1)%3]); });
+$('reset').addEventListener('click', () => { stop(); Object.assign(state, { mode: 'numerical', alpha: .5, k: 1, count: 30, turn: 260, epsilon: .11, primes: 4, pinned: true, gaps: true, selected: null, projection: 'coordinates', zoom: 1, center: null, blockStep: 1 }); render(); });
+$('next-chapter').addEventListener('click', () => { if (state.scene === 'block' && state.blockStep < 3) { state.blockStep++; render(); return; } const scenes = ['switches', 'contacts', 'block']; changeScene(scenes[(scenes.indexOf(state.scene)+1)%3]); });
 $('share').addEventListener('click', async () => {
   const url = new URL(location.href); url.search = '';
-  for (const key of ['scene', 'mode', 'alpha', 'k', 'count', 'turn', 'epsilon', 'primes', 'projection', 'zoom', 'pinned', 'gaps']) url.searchParams.set(key, state[key]);
+  for (const key of ['scene', 'mode', 'alpha', 'k', 'count', 'turn', 'epsilon', 'primes', 'projection', 'zoom', 'pinned', 'gaps', 'blockStep']) url.searchParams.set(key, state[key]);
   if (state.center !== null) url.searchParams.set('center', state.center);
   if (state.selected !== null) url.searchParams.set('selected', state.selected);
   try { await navigator.clipboard.writeText(url.href); $('utility-status').textContent = 'Link copied with your current parameters.'; }
@@ -272,6 +297,7 @@ new ResizeObserver(() => {
 }).observe($('plot').parentElement);
 
 try {
+  typesetStatic();
   const response = await fetch(new URL('./data/ca-states.json', import.meta.url));
   if (!response.ok) throw new Error(`Data request returned ${response.status}`);
   data = await response.json(); restore(); render();

@@ -44,8 +44,6 @@ test('all clean-block slopes strictly increase and every block point is skipped'
     const slopes = inner.slice(1).map((p, i) => (p.y - inner[i].y) / (p.x - inner[i].x));
     for (let i = 1; i < slopes.length; i++) assert.ok(slopes[i] > slopes[i - 1]);
     for (const p of inner) assert.ok(hullHeight(hull, p.x) > p.y);
-    assert.equal(new Set(block.primes).size, m);
-    for (const p of block.primes) assert.equal(block.product % BigInt(p), 0n);
   }
 });
 
@@ -102,4 +100,15 @@ test('zoom is a bounded viewport and preserves complete-sample data and supports
   }
   assert.throws(() => coordinateWindow(points, 0));
   assert.throws(() => coordinateWindow(points, 64));
+});
+
+test('alpha is the exponent of log n and does not change Y or exchange roles with k', () => {
+  for (const alpha of [.1, .5, .95]) for (const k of [1, 2, 4]) {
+    const p = numericalPoints(data.states, alpha, k, 12)[0];
+    const logN = Math.log(55440);
+    assert.ok(Math.abs(p.x - Math.exp(alpha * Math.log(logN))) < 1e-12);
+    assert.ok(Math.abs(p.y / p.rho ** k - 1) < 1e-11);
+  }
+  const alpha = 1e-5, p = numericalPoints(data.states, alpha, 1, 12)[0];
+  assert.ok(Math.abs((p.x-1)/alpha - Math.log(Math.log(55440))) < .001);
 });

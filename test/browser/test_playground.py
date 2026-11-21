@@ -169,12 +169,28 @@ class PlaygroundTests(unittest.TestCase):
 
     def test_clean_block_and_reset(self):
         self.page.locator('[data-scene="block"]').click()
+        self.assertEqual(self.page.locator('#plot [data-point]').count(), 5)
+        self.assertEqual(self.page.locator('#plot [data-point="left"]').count(), 0)
         self.set_range('#prime-count', '8')
-        self.assertEqual(self.page.locator('.prime-tokens span').count(), 8)
-        self.assertIn('≥ 8', self.page.locator('#inspector').inner_text())
+        self.assertEqual(self.page.locator('.prime-tokens>.prime-label').count(), 8)
+        self.page.locator('[data-step="2"]').click()
+        self.assertIn('slope condition', self.page.locator('#inspector').inner_text())
+        self.page.locator('[data-step="3"]').click()
+        self.assertIn('\\ge 8', self.page.locator('#inspector [data-tex]').first.get_attribute('data-tex'))
+        self.assertEqual(self.page.locator('#plot [data-point="left"]').count(), 1)
         self.assertIn('not a computed clean cluster', self.page.locator('#scope-note').inner_text())
         self.page.locator('#reset').click()
         self.assertEqual(self.page.locator('#prime-count').input_value(), '4')
+
+    def test_latex_and_alpha_are_not_swapped(self):
+        self.assertGreaterEqual(self.page.locator('#formula .katex').count(), 3)
+        self.assertEqual(self.page.locator('.katex-error').count(), 0)
+        for alpha in [.1, .95]:
+            self.set_range('#alpha', alpha)
+            point = self.page.locator('#plot [data-point="55440"]')
+            self.assertAlmostEqual(float(point.get_attribute('data-x')), math.exp(alpha * math.log(math.log(55440))), places=11)
+        self.page.locator('[data-scene="block"]').click()
+        self.assertIn('NOT COMPUTED CA DATA', self.page.locator('#plot-kind').inner_text())
 
     def test_share_parameters_restore_and_invalid_values_are_rejected(self):
         self.page.goto(self.url + '?scene=contacts&mode=numerical&alpha=0.8&k=3&count=60&turn=500')

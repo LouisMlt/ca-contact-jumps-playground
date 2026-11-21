@@ -26,6 +26,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm run check:data
+      - run: npm run check:vendor
       - run: node --test --test-reporter=tap
       - run: npm run build
       - name: Install browser test tools

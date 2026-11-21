@@ -80,17 +80,15 @@ export function numericalPoints(states, alpha, k, count) {
   }));
 }
 
-export const FRESH_PRIMES = [17, 19, 23, 29, 31, 37, 41, 43];
 export function cleanBlock(count) {
-  if (!Number.isInteger(count) || count < 2 || count > FRESH_PRIMES.length) throw new Error('Invalid block size');
+  if (!Number.isInteger(count) || count < 2 || count > 8) throw new Error('Invalid block size');
   const points = [{ id: 'left', x: 0, y: 0.9, label: 'bⱼ', schematic: true }];
   for (let i = 0; i <= count; i++) points.push({
     id: `n${i}`, x: 1 + 4 * i / count, y: 1.4 + 1.5 * (i / count) ** 2,
-    label: `N${i}`, block: true, schematic: true,
+    label: i === count ? 'Nᵣ' : `N${'₀₁₂₃₄₅₆₇₈'[i]}`, block: true, index: i, schematic: true,
   });
   points.push({ id: 'right', x: 6, y: 5.2, label: 'bⱼ₊₁', schematic: true });
-  return { points, primes: FRESH_PRIMES.slice(0, count),
-    product: FRESH_PRIMES.slice(0, count).reduce((v, p) => v * BigInt(p), 1n) };
+  return { points, labels: Array.from({ length: count }, (_, i) => `p_{${i+1}}`) };
 }
 
 export function factorText(factors) {

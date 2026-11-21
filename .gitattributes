@@ -1,0 +1,2 @@
+src/vendor/** linguist-vendored=true
+src/data/ca-states.json linguist-generated=true

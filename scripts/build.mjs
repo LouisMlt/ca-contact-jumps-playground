@@ -7,4 +7,4 @@ await mkdir(new URL('../dist/', import.meta.url), { recursive: true });
 await cp(new URL('../src/', import.meta.url), new URL('../dist/', import.meta.url), { recursive: true });
 const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
 if (!html.includes('id="plot"') || !html.includes('type="module"')) throw new Error('Incomplete app entry point');
-console.log('Static app built in dist/; no runtime dependencies or external assets.');
+console.log('Static app built in dist/; mathematical fonts and renderer are served locally.');

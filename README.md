@@ -49,7 +49,7 @@ Open `http://localhost:4173`. Serve the built files over HTTP; opening `index.ht
 
 `npm run dev` serves `src/` directly. `npm run preview` serves the last production build in `dist/`.
 
-The app has three interactive chapters, a numerical/schematic mode switch, keyboard-accessible controls, reduced-motion handling, shareable parameter URLs and SVG export. All assets and data load locally; no third-party analytics or external fonts are used.
+The app has three interactive chapters, a numerical/schematic mode switch, keyboard-accessible controls, reduced-motion handling, shareable parameter URLs and SVG export. Formulas use locally vendored KaTeX with LaTeX fonts and MathML. All assets and data load from the site; no CDN or third-party analytics are used. See [third-party assets](THIRD_PARTY.md).
 
 ## Data and mathematical scope
 
@@ -58,6 +58,10 @@ The app has three interactive chapters, a numerical/schematic mode switch, keybo
 The finite sample includes 55440 as a reference competitor and labels it as excluded from contacts. Several supported boundary points can be pinned on one plot. The clean-block scene is explicitly schematic; its displayed primes do not assert an actual clean window.
 
 Real CA data is the default. Click a point to see its original X and Y coordinates, exact integer and factorization. The optional **Schematic** mode uses constructed P-labelled points; it is not an actual CA sequence. Increasing successive slopes are required only for the proof's sufficiently large clean blocks, not arbitrary neighbouring CA integers or the generic geometric schematic.
+
+Alpha is exactly the exponent in `X(n) = (log n)^alpha`; k is the exponent in Y. Small alpha can look straighter: `(X-1)/alpha` tends to `log log n` as alpha tends to zero. The axes fit each viewport. Neither this observation nor the app claims universal monotonicity of straightness in alpha or k. Regression tests check the formulas independently of their labels.
+
+The block chapter uses **symbolic primes only**. `r` is their number and `p_i` is the ith distinct fresh prime. It progresses through prime entry, the required slope condition, and bracketing/divisibility. Every point position is constructed. No numeric prime window, actual CA clean cluster or existence proof is supplied by that drawing; the mathematical theorem supplies the missing hypotheses separately.
 
 **Reveal small gaps** plots `Y(n) − H(X(n))`, where H is the finite sample's piecewise-linear upper boundary. Boundary points are at zero and skipped points have negative values. This diagnostic projection uses the actual differences without a multiplier; it does not invent or alter the original coordinates, which remain available in the inspector. It is explicitly labelled and does not certify global contacts.
 

@@ -14,7 +14,27 @@ The first feature will arrive as a pull request. Numerical illustrations and sch
 
 Visitors will be able to follow a guided explanation or experiment with the controls. Finite numerical samples will never be presented as certified global contacts.
 
-## Run locally
+## Test the PR branch directly
+
+In GitHub, open [the feature branch](https://github.com/LouisMlt/ca-contact-jumps-playground/tree/feat/supporting-line-playground), then **Code → Codespaces → Create codespace**. In its terminal run:
+
+```sh
+python3 -m http.server 4173 --directory src --bind 0.0.0.0
+```
+
+Open port **4173** from the Codespaces **Ports** tab. This serves the branch's source directly: no merge, build or package installation is needed. Stop the server with Ctrl+C. To get a later pushed checkpoint, first preserve any local edits, run `git pull --ff-only` on the feature branch and refresh the browser. The URL in Codespaces is a development preview, not a production deployment.
+
+To try the same branch on your computer:
+
+```sh
+git clone --branch feat/supporting-line-playground https://github.com/LouisMlt/ca-contact-jumps-playground.git
+cd ca-contact-jumps-playground
+python3 -m http.server 4173 --directory src
+```
+
+Open `http://localhost:4173`.
+
+## Build and check locally
 
 Requires Node 22 or newer and Python 3. No JavaScript package installation is needed.
 
@@ -22,10 +42,12 @@ Requires Node 22 or newer and Python 3. No JavaScript package installation is ne
 npm test
 npm run check:data
 npm run build
-npm run dev
+npm run preview
 ```
 
 Open `http://localhost:4173`. Serve the built files over HTTP; opening `index.html` directly cannot load JavaScript modules or the JSON data reliably.
+
+`npm run dev` serves `src/` directly. `npm run preview` serves the last production build in `dist/`.
 
 The app has three interactive chapters, a numerical/schematic mode switch, keyboard-accessible controls, reduced-motion handling, shareable parameter URLs and SVG export. All assets and data load locally; no third-party analytics or external fonts are used.
 

@@ -73,11 +73,13 @@ The app has three interactive chapters, a numerical/schematic mode switch, keybo
 
 The finite sample includes 55440 as a reference competitor and labels it as excluded from contacts. Several supported boundary points can be pinned on one plot. The clean-block scene is explicitly schematic; its displayed primes do not assert an actual clean window.
 
-Real CA data is the default. Click a point to see its original X and Y coordinates, exact integer and factorization. The optional **Schematic** mode uses constructed P-labelled points; it is not an actual CA sequence. Increasing successive slopes are required only for the proof's sufficiently large clean blocks, not arbitrary neighbouring CA integers or the generic geometric schematic.
+Real CA data is the default. Click a point to see its original X and Y coordinates, exact integer and factorization. The optional **Block sketch** uses constructed points with strictly increasing successive slopes on every segment. It illustrates the proof's clean-block condition and is not computed CA data. Its endpoint supports concern the finite sketch, not asserted global contacts. The numerical sample is not being claimed to form one clean block.
 
 Alpha is exactly the exponent in `X(n) = (log n)^alpha`; k is the exponent in Y. Small alpha can look straighter: `(X-1)/alpha` tends to `log log n` as alpha tends to zero. The axes fit each viewport. Neither this observation nor the app claims universal monotonicity of straightness in alpha or k. Regression tests check the formulas independently of their labels.
 
 The block chapter uses **symbolic primes only**. `r` is their number and `p_i` is the ith distinct fresh prime. It progresses through prime entry, the required slope condition, and bracketing/divisibility. Every point position is constructed. No numeric prime window, actual CA clean cluster or existence proof is supplied by that drawing; the mathematical theorem supplies the missing hypotheses separately.
+
+The generated JSON keeps one complete state per line: 181 states in 188 lines rather than 52,473 pretty-printed lines. The compaction preserves every parsed value and keeps build-free branch testing available.
 
 **Reveal small gaps** plots `Y(n) − H(X(n))`, where H is the finite sample's piecewise-linear upper boundary. Boundary points are at zero and skipped points have negative values. This diagnostic projection uses the actual differences without a multiplier; it does not invent or alter the original coordinates, which remain available in the inspector. It is explicitly labelled and does not certify global contacts.
 

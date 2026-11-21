@@ -94,8 +94,10 @@ function plot(scene) {
   if (!residual && (state.scene !== 'block' || state.blockStep === 3)) svg += `<path d="${path(hull)}" fill="none" stroke="${colour.teal}" stroke-width="1.6" opacity=".6"/>`;
   const addLine = (l, color, opacity, width, dash = '') => `<path d="M${px(x0)},${py(l.lambda*x0+l.intercept)}L${px(x1)},${py(l.lambda*x1+l.intercept)}" fill="none" stroke="${color}" opacity="${opacity}" stroke-width="${width}" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
   if (!residual && state.scene === 'contacts' && state.pinned) {
-    const indices = [...new Set([0, Math.floor(hull.length / 2), hull.length - 1])];
-    indices.forEach((i, j) => { svg += addLine(support(points, supportSlope(hull, i)), [colour.gold, colour.violet, colour.coral][j], .65, 1.6, '7 6'); });
+    const slopes = hull.length === 2 ? [supportSlope(hull, 0),
+      (hull[1].y-hull[0].y)/(hull[1].x-hull[0].x), supportSlope(hull, 1)]
+      : [...new Set([0, Math.floor(hull.length/2), hull.length-1])].map(i => supportSlope(hull, i));
+    slopes.forEach((slope, j) => { svg += addLine(support(points, slope), [colour.gold, colour.violet, colour.coral][j], .65, 1.6, '7 6'); });
   }
   if (state.scene !== 'block') svg += residual ? `<path d="M${px(x0)},${py(0)}H${px(x1)}" stroke="${colour.teal}" stroke-width="2"/>` : addLine(line, colour.teal, .96, 2.7);
   if (residual) for (const p of visible) svg += `<path d="M${px(p.x)},${py(0)}V${py(p.y)}" stroke="${colour.coral}" stroke-dasharray="3 4" opacity=".5"/>`;
@@ -111,7 +113,7 @@ function plot(scene) {
     const x = px(p.x), y = py(p.y), boundary = hullIds.has(p.id), touching = !residual && state.scene !== 'block' && line.touching.includes(original), selected = state.selected === p.id;
     const ordinary = state.scene === 'block' && (state.blockStep === 1 || (state.blockStep === 2 && [0, state.primes].includes(p.index)));
     const c = ordinary ? colour.muted : p.reference ? colour.gold : boundary ? colour.teal : colour.coral;
-    const description = ordinary ? 'constructed CA-state illustration, not a claimed contact' : p.reference ? 'reference competitor, excluded from contacts' : boundary ? (p.schematic ? 'supporting contact in this schematic' : 'finite-sample boundary candidate, not globally certified') : 'skipped point below the finite upper boundary';
+    const description = ordinary ? 'constructed CA-state illustration, not a claimed contact' : p.reference ? 'reference competitor, excluded from contacts' : boundary ? (p.schematic ? 'finite sketch boundary point, not an asserted global contact' : 'finite-sample boundary candidate, not globally certified') : 'skipped point below the finite upper boundary';
     svg += `<g data-point="${escape(p.id)}" data-boundary="${boundary}" data-x="${original.x}" data-y="${original.y}" data-display-y="${p.y}" tabindex="0" role="button" aria-label="${escape(p.label)}: ${description}" ${selected ? 'aria-pressed="true"' : 'aria-pressed="false"'}><title>${escape(p.label)} — ${description}</title><circle class="point-hit" cx="${x}" cy="${y}" r="15" fill="transparent"/>`;
     if (touching) svg += `<circle cx="${x}" cy="${y}" r="13" fill="${c}" opacity=".11"/><circle cx="${x}" cy="${y}" r="12" fill="none" stroke="${c}" opacity=".45"/>`;
     svg += `<circle class="selection-halo" cx="${x}" cy="${y}" r="12" fill="none" stroke="${c}" stroke-width="2" opacity="${selected ? .8 : 0}"/>`;
@@ -148,15 +150,15 @@ function headings() {
   document.querySelectorAll('[data-view]').forEach(b => { b.classList.toggle('active', b.dataset.view === state.projection); b.setAttribute('aria-pressed', String(b.dataset.view === state.projection)); });
   $('scene-index').textContent = `${state.scene === 'switches' ? '01' : contact ? '02' : '03'} / 03`;
   if (contact) {
-    $('plot-kind').textContent = numerical ? 'REAL CA DATA · FINITE SAMPLE · GLOBAL CONTACTS NOT CERTIFIED' : 'SCHEMATIC · CONSTRUCTED COORDINATES · NOT CA DATA';
+    $('plot-kind').textContent = numerical ? 'REAL CA DATA · FINITE SAMPLE · GLOBAL CONTACTS NOT CERTIFIED' : 'CLEAN-BLOCK SKETCH · STRICTLY INCREASING SLOPES · NOT CA DATA';
     $('plot-title').textContent = residual ? 'Make the small gaps visible.' : numerical ? 'Real numbers. A finite window.' : 'A line can touch. A point can miss.';
     $('formula').innerHTML = residual ? `${math(String.raw`g(n)=Y(n)-H(X(n))`)}<span>H = finite upper boundary</span><span>actual gaps</span>` : numerical ? `${math(String.raw`X(n)=(\log n)^\alpha`)}${math(String.raw`Y(n)=\rho(n)^k`)}${math(String.raw`\max\{Y-\lambda X\}`)}` : `<span>Constructed ${math('(X,Y)')} points</span><span>not a CA sequence</span>`;
-    const scope = numerical ? `First ${state.count} numerical CA states from 55440; later CA states may invalidate these supports. The gold diamond is the excluded reference. Rounded values are not certificates.` : 'Schematic geometry: constructed positions, not numerical CA values or a CA sequence. Successive slopes need not increase.';
+    const scope = numerical ? `First ${state.count} numerical CA states from 55440; later CA states may invalidate these supports. The gold diamond is the excluded reference. Rounded values are not certificates.` : 'Constructed clean-block sketch: every successive slope strictly increases. These are not computed CA coordinates; the sketch endpoints are not asserted to be global contacts.';
     $('scope-note').textContent = scope + (residual ? ' Diagnostic projection: subtract the finite upper boundary from Y; no global contacts are certified.' : '');
     $('line-controls').hidden = residual;
     $('guide-label').textContent = residual ? 'TRUE GAPS, SEPARATELY SCALED' : numerical ? 'A FINITE PICTURE HAS LIMITS' : 'LOOK FOR THE GAP';
-    $('guide-text').textContent = residual ? 'Below zero means a true gap. Return to Coordinates to turn the supporting line.' : numerical ? 'Click a cross, reveal its gap, or zoom in. Increasing slopes belong to sufficiently large clean blocks—not every run of CA states.' : 'The points are constructed for geometric intuition. The block chapter introduces the separate increasing-slope condition.';
-    $('contact-legend').textContent = numerical ? 'finite-sample candidate' : 'supporting contact';
+    $('guide-text').textContent = residual ? 'Below zero means a true gap. Return to Coordinates to turn the supporting line.' : numerical ? 'Click a cross, reveal its gap, or zoom in.' : 'Each successive segment is steeper. All interior points lie below the endpoint chord. The middle dashed support touches both endpoints of this finite sketch.';
+    $('contact-legend').textContent = numerical ? 'finite-sample candidate' : 'finite sketch boundary';
   } else if (state.scene === 'switches') {
     $('plot-kind').textContent = 'SMALL INTEGER EXAMPLES · NUMERICAL THRESHOLDS';
     $('plot-title').textContent = 'One parameter. Many prime switches.';
@@ -200,11 +202,11 @@ function inspector() {
   } else if (state.scene === 'block') {
     html = state.blockStep === 1 ? `<h3>${math(String.raw`N_i=N_{i-1}p_i`)}</h3><p>Each step adds one distinct prime. Here ${math(`r=${state.primes}`)}.</p>` : state.blockStep === 2 ? `<h3>${math(String.raw`s_1<\cdots<s_r`)}</h3><p>The red interiors lie below the yellow chord. This schematic assumes the slope condition; the theorem proves it for sufficiently large clean blocks.</p>` : `<h3>${math(String.raw`\omega\!\left(\frac{b_{j+1}}{b_j}\right)\ge ` + state.primes)}</h3><p>All ${state.primes} distinct fresh primes divide the quotient. Additional factors may occur.</p><p>${math(String.raw`b_j\mid N_0\mid N_r\mid b_{j+1}`)}</p>`;
   } else {
-    const title = p.reference ? 'Reference competitor' : boundary ? (p.schematic ? 'A supporting contact' : 'Finite-sample candidate') : 'A skipped point';
+    const title = p.reference ? 'Reference competitor' : boundary ? (p.schematic ? 'A finite sketch boundary point' : 'Finite-sample candidate') : 'A skipped point';
     html = `<p class="eyebrow">CLICK ANY POINT TO INSPECT</p><h3>${title}</h3><p class="number">${p.schematic ? escape(p.label) : escape(shortInteger(p.n))}</p>`;
     if (p.reference) html += '<p>55440 participates in every comparison, but is excluded from the theorem’s contact set.</p>';
     else if (!boundary) html += `<p>Gap to the finite upper boundary: <strong>${precise(h-p.y)}</strong>. This point cannot touch a line majorising even this finite set.</p>`;
-    else html += `<p>${p.schematic ? 'One of three points touched by the pinned supports. Move λ to change which point the current line touches.' : 'This point supports a line within the plotted sample. That does not certify comparison with all CA integers.'}</p>`;
+    else html += `<p>${p.schematic ? 'One of the two endpoints of the strictly increasing-slope sketch. This does not assert that a block endpoint is a global contact.' : 'This point supports a line within the plotted sample. That does not certify comparison with all CA integers.'}</p>`;
     html += `<dl class="coordinate-values"><dt>Original X</dt><dd>${precise(p.x)}</dd><dt>Original Y</dt><dd>${precise(p.y)}</dd></dl>`;
     if (p.factors) html += `<details><summary>Exact integer and factorisation</summary><code>${escape(p.n)}<br>${escape(factorText(p.factors))}</code><p>X and Y use floating-point logarithms of the exact CA integer and its divisor sum.</p></details>`;
     const names = current.line.touching.map(q => q.schematic ? q.label : shortInteger(q.n));

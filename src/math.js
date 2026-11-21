@@ -72,8 +72,11 @@ export function coordinateWindow(points, zoom = 1, center = null) {
 }
 
 export function schematicPoints() {
-  return [[1, 1], [2, 1.6], [3, 2.0], [4, 4.6], [5, 3.8], [6, 4], [7, 4.5], [8, 4.8], [9, 5.4]]
-    .map(([x, y], i) => ({ id: `s${i}`, x, y, label: `P${i + 1}`, schematic: true }));
+  // A constructed clean-block shape: every successive slope strictly increases.
+  // Its two endpoint supports concern this finite sketch, not global CA contacts.
+  return Array.from({ length: 9 }, (_, i) => ({ id: `s${i}`, x: i+1,
+    y: 1 + .055*i + .06*i*i,
+    label: i === 8 ? 'Nᵣ' : `N${'₀₁₂₃₄₅₆₇₈'[i]}`, schematic: true }));
 }
 
 export function numericalPoints(states, alpha, k, count) {

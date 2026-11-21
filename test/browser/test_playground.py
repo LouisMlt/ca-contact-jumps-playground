@@ -77,9 +77,12 @@ class PlaygroundTests(unittest.TestCase):
 
     def test_schematic_plot_has_multiple_supports_and_visible_skipped_points(self):
         self.page.locator('[data-mode="schematic"]').click()
-        self.assertIn('SCHEMATIC', self.page.locator('#plot-kind').inner_text())
+        self.assertIn('STRICTLY INCREASING SLOPES', self.page.locator('#plot-kind').inner_text())
         self.assertEqual(self.page.locator('#plot [data-point]').count(), 9)
         self.assertEqual(self.page.locator('#plot path[stroke-dasharray="7 6"]').count(), 3)
+        xy = self.page.locator('#plot [data-point]').evaluate_all('(points)=>points.map(p=>[Number(p.dataset.x),Number(p.dataset.y)])')
+        slopes = [(b[1]-a[1])/(b[0]-a[0]) for a,b in zip(xy,xy[1:])]
+        self.assertTrue(all(b>a for a,b in zip(slopes,slopes[1:])))
         self.page.locator('#plot [data-point="s1"]').press('Enter')
         self.assertIn('A skipped point', self.page.locator('#inspector').inner_text())
         self.assertIn('Gap to the finite upper boundary', self.page.locator('#inspector').inner_text())

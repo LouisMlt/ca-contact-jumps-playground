@@ -6,15 +6,19 @@ import { upperHull, support, supportSlope, hullHeight, schematicPoints,
 
 const data = JSON.parse(readFileSync(new URL('../src/data/ca-states.json', import.meta.url)));
 
-test('schematic supports touch three different points and dominate every point', () => {
+test('clean-block sketch has strictly increasing slopes and genuine endpoint supports', () => {
   const points = schematicPoints(), hull = upperHull(points);
-  assert.equal(hull.length, 3);
+  assert.equal(hull.length, 2);
+  const slopes = points.slice(1).map((p, i) => (p.y-points[i].y)/(p.x-points[i].x));
+  for (let i=1; i<slopes.length; i++) assert.ok(slopes[i] > slopes[i-1]);
   for (let i = 0; i < hull.length; i++) {
     const line = support(points, supportSlope(hull, i));
     assert.ok(line.touching.includes(hull[i]));
     for (const p of points) assert.ok(line.lambda * p.x + line.intercept >= p.y - 1e-12);
   }
   for (const p of points.filter(p => !hull.includes(p))) assert.ok(hullHeight(hull, p.x) > p.y + 0.1);
+  const chordSlope = (points.at(-1).y-points[0].y)/(points.at(-1).x-points[0].x);
+  assert.equal(support(points, chordSlope).touching.length, 2);
 });
 
 test('collinear boundary points are all retained as supporting-line ties', () => {

@@ -128,6 +128,9 @@ class PlaygroundTests(unittest.TestCase):
         self.page.emulate_media(reduced_motion='reduce')
         for width in [375, 768, 1440]:
             self.page.set_viewport_size({'width': width, 'height': 950})
+            self.page.wait_for_function('''() => Math.abs(
+                document.querySelector('#plot').viewBox.baseVal.width -
+                document.querySelector('#plot').getBoundingClientRect().width) < 2''')
             self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width + 1)
         self.page.locator('#slope').focus()
         before = float(self.page.locator('#slope').input_value())

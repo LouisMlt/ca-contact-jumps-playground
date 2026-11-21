@@ -4,10 +4,11 @@ import { upperHull, support, supportSlope, hullHeight, schematicPoints, numerica
 const $ = id => document.getElementById(id);
 const escape = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 4 });
+const axisFmt = n => Number(n).toLocaleString('en-US', { maximumSignificantDigits: 3, notation: 'compact' });
 const colour = { teal: '#5ee0c2', gold: '#eac978', coral: '#ff939b', muted: '#899bb8', violet: '#b9a4f7' };
 const state = { scene: 'contacts', mode: 'schematic', alpha: 0.5, k: 1, count: 30, turn: 260,
   epsilon: 0.11, primes: 4, pinned: true, gaps: true, selected: null };
-let data, current, timer = null;
+let data, current, timer = null, lastWidth = 0;
 
 function restore() {
   const p = new URLSearchParams(location.search);
@@ -38,7 +39,12 @@ function sceneData() {
 
 function plot(scene) {
   const { points, lambda } = scene, hull = upperHull(points), line = support(points, lambda);
-  const W = 920, H = 530, left = 78, right = 45, top = 48, bottom = 66;
+  // Reflow the drawing instead of shrinking a desktop SVG's text to a few pixels.
+  const W = Math.max(300, Math.round($('plot').getBoundingClientRect().width) || 920);
+  const mobile = W < 560, H = mobile ? 440 : 530;
+  const left = mobile ? 52 : 78, right = mobile ? 22 : 45, top = 48, bottom = 66;
+  lastWidth = W;
+  $('plot').setAttribute('viewBox', `0 0 ${W} ${H}`);
   const minX = Math.min(...points.map(p => p.x)), maxX = Math.max(...points.map(p => p.x));
   const minY = Math.min(...points.map(p => p.y)), maxY = Math.max(...points.map(p => p.y));
   const dx = maxX - minX || 1, dy = maxY - minY || 1;
@@ -50,7 +56,7 @@ function plot(scene) {
   let svg = `<title id="svg-title">${escape($('plot-title').textContent)}</title><desc id="svg-description">${escape($('scope-note').textContent)} Circles mark points on the finite upper boundary; crosses lie below it. Use the labelled controls or focus a point for its details.</desc><defs><clipPath id="chart-clip"><rect x="${left}" y="${top - 10}" width="${W-left-right}" height="${H-top-bottom+10}"/></clipPath></defs>`;
   for (let i = 0; i <= 4; i++) {
     const x = minX + dx * i / 4, y = minY + dy * i / 4;
-    svg += `<path d="M${px(x)},${top}V${H-bottom} M${left},${py(y)}H${W-right}" stroke="#26354c" stroke-dasharray="2 7"/><text x="${px(x)}" y="${H-bottom+27}" fill="${colour.muted}" font-size="13" text-anchor="middle">${fmt(x)}</text><text x="${left-13}" y="${py(y)+4}" fill="${colour.muted}" font-size="13" text-anchor="end">${fmt(y)}</text>`;
+    svg += `<path d="M${px(x)},${top}V${H-bottom} M${left},${py(y)}H${W-right}" stroke="#26354c" stroke-dasharray="2 7"/><text x="${px(x)}" y="${H-bottom+27}" fill="${colour.muted}" font-size="14" text-anchor="middle">${axisFmt(x)}</text><text x="${left-10}" y="${py(y)+4}" fill="${colour.muted}" font-size="14" text-anchor="end">${axisFmt(y)}</text>`;
   }
   svg += `<text x="${W-right}" y="${H-13}" fill="#afbed5" font-size="14" text-anchor="end">${escape(scene.xLabel)}</text><text x="${left}" y="24" fill="#afbed5" font-size="14">${escape(scene.yLabel)}</text><path d="M${left},${top}V${H-bottom}H${W-right}" fill="none" stroke="#52617b"/>`;
   svg += '<g clip-path="url(#chart-clip)">';
@@ -83,7 +89,9 @@ function plot(scene) {
     else svg += `<path d="m${x-4.5},${y-4.5} 9 9m-9 0 9-9" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
     if (points.length <= 14 || selected || touching || i === 0 || i === points.length - 1) {
       const label = p.schematic ? p.label : shortInteger(p.label);
-      svg += `<text x="${x}" y="${y+(boundary ? -19 : 25)}" fill="${c}" font-size="${points.length > 14 ? 12 : 14}" text-anchor="middle">${escape(label)}</text>`;
+      const labelWidth = label.length * 7.5;
+      const labelX = Math.max(labelWidth / 2 + 3, Math.min(W-labelWidth / 2-3, x));
+      svg += `<text x="${labelX}" y="${y+(boundary ? -19 : 25)}" fill="${c}" font-size="14" text-anchor="middle">${escape(label)}</text>`;
     }
     svg += '</g>';
   }
@@ -193,12 +201,16 @@ $('share').addEventListener('click', async () => {
 $('download').addEventListener('click', () => {
   const svg = $('plot').cloneNode(true); svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  bg.setAttribute('width', '920'); bg.setAttribute('height', '530'); bg.setAttribute('fill', '#0d1626'); svg.insertBefore(bg, svg.firstChild);
+  bg.setAttribute('width', String(svg.viewBox.baseVal.width)); bg.setAttribute('height', String(svg.viewBox.baseVal.height)); bg.setAttribute('fill', '#0d1626'); svg.insertBefore(bg, svg.firstChild);
   const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
   const a = document.createElement('a'); a.href = url; a.download = `ca-${state.scene}-${state.mode}.svg`; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000); $('utility-status').textContent = 'Plot saved. Its SVG description includes the illustration’s scope.';
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+new ResizeObserver(() => {
+  const width = Math.max(300, Math.round($('plot').getBoundingClientRect().width));
+  if (data && width !== lastWidth) render();
+}).observe($('plot').parentElement);
 
 try {
   const response = await fetch(new URL('./data/ca-states.json', import.meta.url));

@@ -6,6 +6,8 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "test": "node --test",
+    "check:local": "bash scripts/check-local.sh",
+    "setup:hooks": "git config core.hooksPath .githooks",
     "build": "node scripts/build.mjs",
     "check:data": "python3 scripts/generate_data.py --check",
     "check:vendor": "python3 scripts/vendor_katex.py --check",

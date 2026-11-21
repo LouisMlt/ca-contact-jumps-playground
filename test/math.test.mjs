@@ -112,3 +112,12 @@ test('alpha is the exponent of log n and does not change Y or exchange roles wit
   const alpha = 1e-5, p = numericalPoints(data.states, alpha, 1, 12)[0];
   assert.ok(Math.abs((p.x-1)/alpha - Math.log(Math.log(55440))) < .001);
 });
+
+test('zoom keeps selected endpoints for every alpha slider value and sample size', () => {
+  for (let a = 10; a <= 95; a++) for (const count of [12, 30, 60, 80]) {
+    const points = numericalPoints(data.states, a/100, 1, count);
+    for (const p of [points[0], points.at(-1)]) for (const zoom of [2, 4, 8, 16, 32]) {
+      assert.ok(coordinateWindow(points, zoom, p.x).visible.includes(p), `${a/100}, ${count}, ${zoom}, ${p.id}`);
+    }
+  }
+});

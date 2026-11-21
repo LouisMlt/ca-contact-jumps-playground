@@ -49,6 +49,22 @@ Open `http://localhost:4173`. Serve the built files over HTTP; opening `index.ht
 
 `npm run dev` serves `src/` directly. `npm run preview` serves the last production build in `dist/`.
 
+## Local commit and push gates
+
+Install the test tools once, then enable the repository's hooks:
+
+```sh
+python3 -m pip install -r requirements-test.txt
+python3 -m playwright install chromium
+npm run setup:hooks
+```
+
+The pre-commit hook checks the **exact staged Git tree** in a temporary directory: Node tests, data regeneration, local KaTeX integrity, syntax, production build and the complete Chromium suite. It does not accidentally test unstaged changes instead of the files being committed. The pre-push hook checks each pushed source tree, reusing a successful local result only for the identical tree. A failing check blocks the commit/push locally, before a CI notification can be generated.
+
+Run the same full checks manually with `npm run check:local`. The browser suite uses Playwright's installed Chromium, or an existing system `chromium` if the bundled browser is absent. You can explicitly set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an installed compatible browser. The local check recorded for a push is supplementary; GitHub Actions independently checks the pushed revision.
+
+Hooks are enabled per checkout; Git does not activate them automatically on clone. They are a development aid, not a replacement for CI or branch protections. They have been enabled in the development checkout used for this PR.
+
 The app has three interactive chapters, a numerical/schematic mode switch, keyboard-accessible controls, reduced-motion handling, shareable parameter URLs and SVG export. Formulas use locally vendored KaTeX with LaTeX fonts and MathML. All assets and data load from the site; no CDN or third-party analytics are used. See [third-party assets](THIRD_PARTY.md).
 
 ## Data and mathematical scope

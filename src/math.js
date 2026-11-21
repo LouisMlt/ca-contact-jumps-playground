@@ -56,13 +56,19 @@ export function coordinateWindow(points, zoom = 1, center = null) {
   const min = points[0].x, max = points.at(-1).x, half = (max - min) / (2 * zoom);
   if (zoom === 1) return { minX: min, maxX: max, center: (min + max) / 2, visible: [...points] };
   let middle = Math.max(min + half, Math.min(max - half, center ?? (min + max) / 2));
-  let visible = points.filter(p => p.x >= middle - half && p.x <= middle + half);
+  const bounds = () => ({
+    minX: middle <= min + half ? min : middle - half,
+    maxX: middle >= max - half ? max : middle + half,
+  });
+  let range = bounds();
+  let visible = points.filter(p => p.x >= range.minX && p.x <= range.maxX);
   if (!visible.length) {
     const nearest = points.reduce((a, b) => Math.abs(a.x-middle) < Math.abs(b.x-middle) ? a : b);
     middle = Math.max(min + half, Math.min(max - half, nearest.x));
-    visible = points.filter(p => p.x >= middle - half && p.x <= middle + half);
+    range = bounds();
+    visible = points.filter(p => p.x >= range.minX && p.x <= range.maxX);
   }
-  return { minX: middle - half, maxX: middle + half, center: middle, visible };
+  return { ...range, center: middle, visible };
 }
 
 export function schematicPoints() {

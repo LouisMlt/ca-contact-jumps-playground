@@ -8,6 +8,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from fractions import Fraction
 import math
+import os
+import shutil as browser_paths
 import shutil
 import tempfile
 import threading
@@ -34,7 +36,10 @@ class PlaygroundTests(unittest.TestCase):
         cls.thread.start()
         cls.url = f'http://127.0.0.1:{cls.server.server_port}/ca-contact-jumps-playground/'
         cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
+        executable = os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH')
+        if not executable and not Path(cls.playwright.chromium.executable_path).exists():
+            executable = browser_paths.which('chromium') or browser_paths.which('chromium-browser')
+        cls.browser = cls.playwright.chromium.launch(executable_path=executable)
 
     @classmethod
     def tearDownClass(cls):
@@ -127,6 +132,16 @@ class PlaygroundTests(unittest.TestCase):
         self.assertEqual(chart.get_attribute('data-support-intercept'), before)
         self.page.locator('#fit-view').click()
         self.assertEqual(self.page.locator('#plot [data-point]').count(), 30)
+
+    def test_zoom_keeps_selected_endpoints_at_rounding_sensitive_alpha(self):
+        self.set_range('#alpha', .13)
+        for side in ['first', 'last']:
+            point = getattr(self.page.locator('#plot [data-point]'), side)
+            identifier = point.get_attribute('data-point')
+            point.press('Enter')
+            self.page.locator('#zoom-in').click()
+            self.assertEqual(self.page.locator(f'#plot [data-point="{identifier}"]').count(), 1)
+            self.page.locator('#fit-view').click()
 
     def test_source_branch_runs_directly_without_build_artifacts(self):
         self.page.goto(self.url.replace('/ca-contact-jumps-playground/', '/source-branch/'))

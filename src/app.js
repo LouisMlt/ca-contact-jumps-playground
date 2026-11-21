@@ -83,7 +83,8 @@ function plot(scene) {
     const c = p.reference ? colour.gold : boundary ? colour.teal : colour.coral;
     const description = p.reference ? 'reference competitor, excluded from contacts' : boundary ? (p.schematic ? 'supporting contact in this schematic' : 'finite-sample boundary candidate, not globally certified') : 'skipped point below the finite upper boundary';
     svg += `<g data-point="${escape(p.id)}" tabindex="0" role="button" aria-label="${escape(p.label)}: ${description}" ${selected ? 'aria-pressed="true"' : 'aria-pressed="false"'}><title>${escape(p.label)} — ${description}</title><circle class="point-hit" cx="${x}" cy="${y}" r="15" fill="transparent"/>`;
-    if (touching || selected) svg += `<circle cx="${x}" cy="${y}" r="13" fill="${c}" opacity=".11"/><circle cx="${x}" cy="${y}" r="12" fill="none" stroke="${c}" opacity=".45"/>`;
+    if (touching) svg += `<circle cx="${x}" cy="${y}" r="13" fill="${c}" opacity=".11"/><circle cx="${x}" cy="${y}" r="12" fill="none" stroke="${c}" opacity=".45"/>`;
+    svg += `<circle class="selection-halo" cx="${x}" cy="${y}" r="12" fill="none" stroke="${c}" stroke-width="2" opacity="${selected ? .8 : 0}"/>`;
     if (p.reference) svg += `<path d="M${x},${y-6}l6 6-6 6-6-6Z" fill="#0d1626" stroke="${c}" stroke-width="2"/>`;
     else if (boundary) svg += `<circle cx="${x}" cy="${y}" r="5.7" fill="#0d1626" stroke="${c}" stroke-width="2.4"/>`;
     else svg += `<path d="m${x-4.5},${y-4.5} 9 9m-9 0 9-9" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
@@ -170,6 +171,16 @@ function syncControls() {
 }
 
 function render() { headings(); plot(sceneData()); syncControls(); inspector(); }
+function selectPoint(id) {
+  state.selected = id;
+  // Update the existing nodes so keyboard focus stays on the selected point.
+  for (const group of $('plot').querySelectorAll('[data-point]')) {
+    const selected = group.dataset.point === id;
+    group.setAttribute('aria-pressed', String(selected));
+    group.querySelector('.selection-halo').setAttribute('opacity', selected ? '.8' : '0');
+  }
+  inspector();
+}
 function stop() { if (timer) clearInterval(timer); timer = null; $('animate').textContent = 'Play the sweep'; }
 function changeScene(scene) { stop(); state.scene = scene; state.selected = null; render(); }
 
@@ -182,8 +193,8 @@ for (const [id, key] of Object.entries(inputs)) $(id).addEventListener('input', 
 for (const key of ['pinned', 'gaps']) $(key).addEventListener('change', e => { state[key] = e.target.checked; render(); });
 $('tie-five').addEventListener('click', () => { state.epsilon = Math.log(6/5) / Math.log(5); render(); });
 $('tie-two').addEventListener('click', () => { state.epsilon = Math.log(15/14) / Math.log(2); render(); });
-$('plot').addEventListener('click', e => { const p = e.target.closest('[data-point]'); if (p) { state.selected = p.dataset.point; inspector(); } });
-$('plot').addEventListener('keydown', e => { if (['Enter', ' '].includes(e.key) && e.target.closest('[data-point]')) { e.preventDefault(); state.selected = e.target.closest('[data-point]').dataset.point; inspector(); } });
+$('plot').addEventListener('click', e => { const p = e.target.closest('[data-point]'); if (p) selectPoint(p.dataset.point); });
+$('plot').addEventListener('keydown', e => { if (['Enter', ' '].includes(e.key) && e.target.closest('[data-point]')) { e.preventDefault(); selectPoint(e.target.closest('[data-point]').dataset.point); } });
 $('animate').addEventListener('click', () => {
   if (timer) return stop();
   $('animate').textContent = 'Pause the sweep';
@@ -217,7 +228,8 @@ try {
   if (!response.ok) throw new Error(`Data request returned ${response.status}`);
   data = await response.json(); restore(); render();
 } catch (error) {
-  console.error(error); $('load-error').hidden = false;
+  console.error(error); data = null; stop(); $('load-error').hidden = false;
+  $('plot').setAttribute('hidden', '');
   $('load-error').textContent = 'The interactive data could not be loaded. Please reload or serve the site over HTTP. The explanation below remains available.';
-  document.querySelectorAll('.controls-panel button, .controls-panel input, .controls-panel select').forEach(el => { el.disabled = true; });
+  document.querySelectorAll('.playground button, .playground input, .playground select').forEach(el => { el.disabled = true; });
 }

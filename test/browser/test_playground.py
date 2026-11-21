@@ -74,6 +74,22 @@ class PlaygroundTests(unittest.TestCase):
         self.page.locator('#plot [data-point="s1"]').press('Enter')
         self.assertIn('A skipped point', self.page.locator('#inspector').inner_text())
         self.assertIn('Gap to the finite upper boundary', self.page.locator('#inspector').inner_text())
+        selected = self.page.locator('#plot [data-point="s1"]')
+        self.assertEqual(selected.get_attribute('aria-pressed'), 'true')
+        self.assertGreater(float(selected.locator('.selection-halo').get_attribute('opacity')), 0)
+        self.assertTrue(selected.evaluate('(element) => document.activeElement === element'))
+        self.page.locator('#plot [data-point="s3"]').click()
+        self.assertEqual(selected.get_attribute('aria-pressed'), 'false')
+        self.assertEqual(self.page.locator('#plot [data-point="s3"]').get_attribute('aria-pressed'), 'true')
+
+    def test_data_failure_disables_controls_without_secondary_errors(self):
+        self.page.route('**/data/ca-states.json', lambda route: route.fulfill(status=404, body='Not found'))
+        self.page.reload()
+        self.page.locator('#load-error').wait_for(state='visible')
+        for element in self.page.locator('.playground button, .playground input, .playground select').all():
+            self.assertTrue(element.is_disabled())
+        self.assertTrue(self.page.locator('#plot').is_hidden())
+        self.assertTrue(self.page.locator('#argument').is_visible())
 
     def test_numerical_mode_preserves_finite_scope_and_reference(self):
         self.page.get_by_role('button', name='Real CA sample').click()

@@ -1,0 +1,12 @@
+dist/
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store
+__pycache__/
+*.pyc
+test-results/
+playwright-report/
+.openai/local/
+.local/

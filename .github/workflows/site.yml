@@ -1,0 +1,63 @@
+name: Test and build playground
+
+on:
+  push:
+    branches: [main, feat/supporting-line-playground]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playground-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm run check:data
+      - run: npm run check:vendor
+      - run: node --test --test-reporter=tap
+      - run: npm run build
+      - name: Install browser test tools
+        run: |
+          python3 -m pip install -r requirements-test.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Browser behaviour and responsive checks
+        run: python3 -m unittest discover -s test/browser -p 'test_*.py' -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: test-results/
+          if-no-files-found: ignore
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # Pages can publish a public site even when a source repository is private.
+  # The owner must deliberately enable this variable and Pages after review.
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ENABLE_PUBLIC_PAGES == 'true'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy reviewed main branch
+        id: deployment
+        uses: actions/deploy-pages@v4

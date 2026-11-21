@@ -1,0 +1,17 @@
+{
+  "name": "ca-contact-jumps-playground",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test",
+    "check:local": "bash scripts/check-local.sh",
+    "setup:hooks": "git config core.hooksPath .githooks",
+    "build": "node scripts/build.mjs",
+    "check:data": "python3 scripts/generate_data.py --check",
+    "check:vendor": "python3 scripts/vendor_katex.py --check",
+    "dev": "python3 -m http.server 4173 --directory src --bind 0.0.0.0",
+    "preview": "python3 -m http.server 4173 --directory dist --bind 0.0.0.0"
+  }
+}

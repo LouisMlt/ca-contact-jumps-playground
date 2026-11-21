@@ -13,3 +13,96 @@ The first feature will arrive as a pull request. Numerical illustrations and sch
 - A guided clean-cluster animation: see how increasing slopes force a jump carrying many distinct prime factors.
 
 Visitors will be able to follow a guided explanation or experiment with the controls. Finite numerical samples will never be presented as certified global contacts.
+
+## Test the PR branch directly
+
+In GitHub, open [the feature branch](https://github.com/LouisMlt/ca-contact-jumps-playground/tree/feat/supporting-line-playground), then **Code → Codespaces → Create codespace**. In its terminal run:
+
+```sh
+python3 -m http.server 4173 --directory src --bind 0.0.0.0
+```
+
+Open port **4173** from the Codespaces **Ports** tab. This serves the branch's source directly: no merge, build or package installation is needed. Stop the server with Ctrl+C. To get a later pushed checkpoint, first preserve any local edits, run `git pull --ff-only` on the feature branch and refresh the browser. The URL in Codespaces is a development preview, not a production deployment.
+
+To try the same branch on your computer:
+
+```sh
+git clone --branch feat/supporting-line-playground https://github.com/LouisMlt/ca-contact-jumps-playground.git
+cd ca-contact-jumps-playground
+python3 -m http.server 4173 --directory src
+```
+
+Open `http://localhost:4173`.
+
+## Build and check locally
+
+Requires Node 22 or newer and Python 3. No JavaScript package installation is needed.
+
+```sh
+npm test
+npm run check:data
+npm run build
+npm run preview
+```
+
+Open `http://localhost:4173`. Serve the built files over HTTP; opening `index.html` directly cannot load JavaScript modules or the JSON data reliably.
+
+`npm run dev` serves `src/` directly. `npm run preview` serves the last production build in `dist/`.
+
+## Local commit and push gates
+
+Install the test tools once, then enable the repository's hooks:
+
+```sh
+python3 -m pip install -r requirements-test.txt
+python3 -m playwright install chromium
+npm run setup:hooks
+```
+
+The pre-commit hook checks the **exact staged Git tree** in a temporary directory: Node tests, data regeneration, local KaTeX integrity, syntax, production build and the complete Chromium suite. It does not accidentally test unstaged changes instead of the files being committed. The pre-push hook checks each pushed source tree, reusing a successful local result only for the identical tree. A failing check blocks the commit/push locally, before a CI notification can be generated.
+
+Run the same full checks manually with `npm run check:local`. The browser suite uses Playwright's installed Chromium, or an existing system `chromium` if the bundled browser is absent. You can explicitly set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an installed compatible browser. The local check recorded for a push is supplementary; GitHub Actions independently checks the pushed revision.
+
+Hooks are enabled per checkout; Git does not activate them automatically on clone. They are a development aid, not a replacement for CI or branch protections. They have been enabled in the development checkout used for this PR.
+
+The app has three interactive chapters, a numerical/schematic mode switch, keyboard-accessible controls, reduced-motion handling, shareable parameter URLs and SVG export. Formulas use locally vendored KaTeX with LaTeX fonts and MathML. All assets and data load from the site; no CDN or third-party analytics are used. See [third-party assets](THIRD_PARTY.md).
+
+## Data and mathematical scope
+
+`scripts/generate_data.py` regenerates 180 prime-power transitions. Integers and factorizations are exact; logarithms, threshold ordering and plotted coordinates use floating-point arithmetic. Candidate bounds are checked beyond the last retained event, and unresolved numerical near-ties stop generation. This is a bounded illustration, not a formal certificate or a certification of global contacts.
+
+The finite sample includes 55440 as a reference competitor and labels it as excluded from contacts. Several supported boundary points can be pinned on one plot. The clean-block scene is explicitly schematic; its displayed primes do not assert an actual clean window.
+
+Real CA data is the default. Click a point to see its original X and Y coordinates, exact integer and factorization. The optional **Block sketch** uses constructed points with strictly increasing successive slopes on every segment. It illustrates the proof's clean-block condition and is not computed CA data. Its endpoint supports concern the finite sketch, not asserted global contacts. The numerical sample is not being claimed to form one clean block.
+
+Alpha is exactly the exponent in `X(n) = (log n)^alpha`; k is the exponent in Y. Small alpha can look straighter: `(X-1)/alpha` tends to `log log n` as alpha tends to zero. The axes fit each viewport. Neither this observation nor the app claims universal monotonicity of straightness in alpha or k. Regression tests check the formulas independently of their labels.
+
+The block chapter uses **symbolic primes only**. `r` is their number and `p_i` is the ith distinct fresh prime. It progresses through prime entry, the required slope condition, and bracketing/divisibility. Every point position is constructed. No numeric prime window, actual CA clean cluster or existence proof is supplied by that drawing; the mathematical theorem supplies the missing hypotheses separately.
+
+The generated JSON keeps one complete state per line: 181 states in 188 lines rather than 52,473 pretty-printed lines. The compaction preserves every parsed value and keeps build-free branch testing available.
+
+**Reveal small gaps** plots `Y(n) − H(X(n))`, where H is the finite sample's piecewise-linear upper boundary. Boundary points are at zero and skipped points have negative values. This diagnostic projection uses the actual differences without a multiplier; it does not invent or alter the original coordinates, which remain available in the inspector. It is explicitly labelled and does not certify global contacts.
+
+Select a point and use **+** to zoom around it, **Left/Right** to pan or **Fit all** to restore the full view. Zoom changes only the viewport: supports and boundary classifications continue to use the entire selected sample, including off-screen competitors. Share links preserve the projection, camera and checkbox state.
+
+## Checks and deployment
+
+GitHub Actions regenerates the data, runs mathematical invariant tests, builds the static app and runs real Chromium interaction checks at desktop/mobile sizes and under a repository subpath. Browser tests can also be run in a normal local environment:
+
+```sh
+python3 -m pip install -r requirements-test.txt
+python3 -m playwright install chromium
+python3 -m unittest discover -s test/browser -p 'test_*.py' -v
+```
+
+CI uploads the built site as an artifact. Deployment is deliberately disabled until the owner reviews and merges the PR. To enable public GitHub Pages afterwards:
+
+1. Set **Settings → Pages → Source** to **GitHub Actions**.
+2. Set the Actions repository variable **ENABLE_PUBLIC_PAGES** to **true**.
+3. Run the workflow on `main`, or push a reviewed change to `main`.
+
+Deployment runs only on `main` after the checks pass. PR branches do not deploy. A private source repository alone would not make its Pages site private.
+
+This is an original browser application, not a Manim fork or a project affiliated with 3Blue1Brown. The visual direction draws on geometry-led mathematical storytelling. No software license has been selected yet.
+
+The current interactive review copy is available at [the private PR preview](https://ca-contact-pr-preview.cocoahibiscus4.chatgpt.site). Sign in with the ChatGPT account used for this project. Public hosting remains separate from the code review.

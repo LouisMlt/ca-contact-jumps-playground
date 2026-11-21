@@ -40,6 +40,31 @@ export function hullHeight(hull, x) {
   return null;
 }
 
+// Subtract the finite, piecewise-linear upper boundary. This is a labelled
+// diagnostic projection, never an alteration of the original CA coordinates.
+export function boundaryGaps(points) {
+  const hull = upperHull(points), boundary = new Set(hull);
+  return points.map(p => ({ ...p, originalY: p.y,
+    y: boundary.has(p) ? 0 : p.y - hullHeight(hull, p.x) }));
+}
+
+// Zoom only the viewport. Supports and boundary classification must still be
+// calculated from the complete sample by the caller, before using this window.
+export function coordinateWindow(points, zoom = 1, center = null) {
+  if (points.length < 2 || !Number.isFinite(zoom) || zoom < 1 || zoom > 32
+      || (center !== null && !Number.isFinite(center))) throw new Error('Invalid viewport');
+  const min = points[0].x, max = points.at(-1).x, half = (max - min) / (2 * zoom);
+  if (zoom === 1) return { minX: min, maxX: max, center: (min + max) / 2, visible: [...points] };
+  let middle = Math.max(min + half, Math.min(max - half, center ?? (min + max) / 2));
+  let visible = points.filter(p => p.x >= middle - half && p.x <= middle + half);
+  if (!visible.length) {
+    const nearest = points.reduce((a, b) => Math.abs(a.x-middle) < Math.abs(b.x-middle) ? a : b);
+    middle = Math.max(min + half, Math.min(max - half, nearest.x));
+    visible = points.filter(p => p.x >= middle - half && p.x <= middle + half);
+  }
+  return { minX: middle - half, maxX: middle + half, center: middle, visible };
+}
+
 export function schematicPoints() {
   return [[1, 1], [2, 1.6], [3, 2.0], [4, 4.6], [5, 3.8], [6, 4], [7, 4.5], [8, 4.8], [9, 5.4]]
     .map(([x, y], i) => ({ id: `s${i}`, x, y, label: `P${i + 1}`, schematic: true }));

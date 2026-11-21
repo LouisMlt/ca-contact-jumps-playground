@@ -57,6 +57,12 @@ The app has three interactive chapters, a numerical/schematic mode switch, keybo
 
 The finite sample includes 55440 as a reference competitor and labels it as excluded from contacts. Several supported boundary points can be pinned on one plot. The clean-block scene is explicitly schematic; its displayed primes do not assert an actual clean window.
 
+Real CA data is the default. Click a point to see its original X and Y coordinates, exact integer and factorization. The optional **Schematic** mode uses constructed P-labelled points; it is not an actual CA sequence. Increasing successive slopes are required only for the proof's sufficiently large clean blocks, not arbitrary neighbouring CA integers or the generic geometric schematic.
+
+**Reveal small gaps** plots `Y(n) − H(X(n))`, where H is the finite sample's piecewise-linear upper boundary. Boundary points are at zero and skipped points have negative values. This diagnostic projection uses the actual differences without a multiplier; it does not invent or alter the original coordinates, which remain available in the inspector. It is explicitly labelled and does not certify global contacts.
+
+Select a point and use **+** to zoom around it, **Left/Right** to pan or **Fit all** to restore the full view. Zoom changes only the viewport: supports and boundary classifications continue to use the entire selected sample, including off-screen competitors. Share links preserve the projection, camera and checkbox state.
+
 ## Checks and deployment
 
 GitHub Actions regenerates the data, runs mathematical invariant tests, builds the static app and runs real Chromium interaction checks at desktop/mobile sizes and under a repository subpath. Browser tests can also be run in a normal local environment:
@@ -76,3 +82,5 @@ CI uploads the built site as an artifact. Deployment is deliberately disabled un
 Deployment runs only on `main` after the checks pass. PR branches do not deploy. A private source repository alone would not make its Pages site private.
 
 This is an original browser application, not a Manim fork or a project affiliated with 3Blue1Brown. The visual direction draws on geometry-led mathematical storytelling. No software license has been selected yet.
+
+For Cloudflare's free plan and the one-time account connection, see [Cloudflare Pages setup](docs/CLOUDFLARE.md). No Cloudflare account or production deployment has been configured automatically.

@@ -105,4 +105,4 @@ Deployment runs only on `main` after the checks pass. PR branches do not deploy.
 
 This is an original browser application, not a Manim fork or a project affiliated with 3Blue1Brown. The visual direction draws on geometry-led mathematical storytelling. No software license has been selected yet.
 
-For Cloudflare's free plan and the one-time account connection, see [Cloudflare Pages setup](docs/CLOUDFLARE.md). No Cloudflare account or production deployment has been configured automatically.
+The current interactive review copy is available at [the private PR preview](https://ca-contact-pr-preview.cocoahibiscus4.chatgpt.site). Sign in with the ChatGPT account used for this project. Public hosting remains separate from the code review.

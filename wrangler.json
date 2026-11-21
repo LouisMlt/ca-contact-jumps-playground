@@ -1,8 +1,0 @@
-{
-  "name": "ca-contact-jumps-playground",
-  "compatibility_date": "2026-11-21",
-  "preview_urls": true,
-  "assets": {
-    "directory": "./dist"
-  }
-}

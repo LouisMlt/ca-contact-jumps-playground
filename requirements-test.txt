@@ -1,0 +1,2 @@
+# Browser tests run in GitHub Actions; the website has no runtime dependencies.
+playwright==1.62.0

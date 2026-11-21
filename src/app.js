@@ -148,7 +148,7 @@ function inspector() {
     const names = current.line.touching.map(q => q.schematic ? q.label : shortInteger(q.n));
     html += `<p>Current line touches ${names.map(escape).join(', ')}${current.line.touching.some(q => q.reference) ? ' (reference excluded)' : ''}.</p>`;
   }
-  $('inspector').innerHTML = html;
+  if ($('inspector').innerHTML !== html) $('inspector').innerHTML = html;
 }
 
 function syncControls() {

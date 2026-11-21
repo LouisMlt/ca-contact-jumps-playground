@@ -101,7 +101,7 @@ class PlaygroundTests(unittest.TestCase):
     def test_gap_view_exposes_actual_negative_gaps(self):
         self.page.locator('[data-view="gaps"]').click()
         self.assertEqual(self.page.locator('#plot').get_attribute('data-projection'), 'gaps')
-        self.assertIn('diagnostic projection', self.page.locator('#scope-note').inner_text())
+        self.assertIn('diagnostic projection', self.page.locator('#scope-note').inner_text().lower())
         self.assertTrue(self.page.locator('#slope').is_disabled())
         points = self.page.locator('#plot [data-point]')
         ys = points.evaluate_all('(points) => points.map(p => Number(p.dataset.displayY))')
@@ -216,7 +216,10 @@ class PlaygroundTests(unittest.TestCase):
             self.page.wait_for_function('''() => Math.abs(
                 document.querySelector('#plot').viewBox.baseVal.width -
                 document.querySelector('#plot').getBoundingClientRect().width) < 2''')
-            self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width + 1)
+            overflow = self.page.evaluate('''() => [...document.querySelectorAll('body *')]
+                .filter(e => e.getBoundingClientRect().right > innerWidth + 1 && e.getBoundingClientRect().width > 0)
+                .slice(0, 8).map(e => ({tag: e.tagName, cls: String(e.className), text: e.textContent.slice(0, 80)}))''')
+            self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), width + 1, str(overflow))
         self.page.locator('#slope').focus()
         before = float(self.page.locator('#slope').input_value())
         self.page.keyboard.press('ArrowRight')

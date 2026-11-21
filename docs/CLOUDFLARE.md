@@ -5,14 +5,14 @@
 The newer dashboard may open the Workers flow. This repository also supports it with `wrangler.json`, which explicitly declares `dist` as the static asset directory. Use:
 
 ```text
-Git branch for the current test deployment: feat/supporting-line-playground
+Production branch: main
 Build command: npm run build
 Deploy command: npx wrangler deploy
 Root directory: repository root
 Environment variable: NODE_VERSION=24
 ```
 
-The Worker name in `wrangler.json` is `ca-contact-jumps-playground`; it must match the name chosen in the dashboard. After the app is merged, set the production branch to `main`. Do not deploy the current README-only `main` as the app. Non-production branch previews can remain enabled.
+The Worker name in `wrangler.json` is `ca-contact-jumps-playground`; it must match the name chosen in the dashboard. Keep `main` as the production branch. Enable non-production/PR preview builds separately; do not designate a feature branch as production. After the author reviews and merges the app, `main` builds and deploys the production version. The current README-only `main` cannot deploy the app before that merge.
 
 This is an **assets-only** deployment, with no Worker script, database or paid binding. Cloudflare documents static asset requests as free and unlimited, with no additional asset-storage charge. This is distinct from the Pages build allowance described below. See [static asset billing](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/) and [Workers build settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
 

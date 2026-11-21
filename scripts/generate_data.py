@@ -66,11 +66,23 @@ def generate():
     }
 
 
+def serialize(data):
+    # Keep the complete sample in the checkout for build-free branch previews,
+    # without tens of thousands of indentation-only lines in code reviews.
+    lines = ['{', '  "description": ' + json.dumps(data['description']) + ',',
+             '  "generator": ' + json.dumps(data['generator'], separators=(',', ':')) + ',',
+             '  "reference": ' + json.dumps(data['reference']) + ',', '  "states": [']
+    lines.append(',\n'.join('    ' + json.dumps(s, ensure_ascii=False, separators=(',', ':'))
+                           for s in data['states']))
+    lines.extend(['  ]', '}', ''])
+    return '\n'.join(lines)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
-    expected = json.dumps(generate(), indent=2, ensure_ascii=False) + '\n'
+    expected = serialize(generate())
     if args.check:
         if not OUTPUT.exists() or OUTPUT.read_text() != expected:
             raise SystemExit('Data differs: run python3 scripts/generate_data.py')

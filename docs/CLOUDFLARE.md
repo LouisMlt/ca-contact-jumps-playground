@@ -1,5 +1,25 @@
 # Cloudflare Pages and PR previews
 
+## If the dashboard asks for a deploy command: Workers Static Assets
+
+The newer dashboard may open the Workers flow. This repository also supports it with `wrangler.json`, which explicitly declares `dist` as the static asset directory. Use:
+
+```text
+Git branch for the current test deployment: feat/supporting-line-playground
+Build command: npm run build
+Deploy command: npx wrangler deploy
+Root directory: repository root
+Environment variable: NODE_VERSION=24
+```
+
+The Worker name in `wrangler.json` is `ca-contact-jumps-playground`; it must match the name chosen in the dashboard. After the app is merged, set the production branch to `main`. Do not deploy the current README-only `main` as the app. Non-production branch previews can remain enabled.
+
+This is an **assets-only** deployment, with no Worker script, database or paid binding. Cloudflare documents static asset requests as free and unlimited, with no additional asset-storage charge. This is distinct from the Pages build allowance described below. See [static asset billing](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/) and [Workers build settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/).
+
+The error “Could not detect a directory containing static files” means the deploy step did not find the built assets/configuration. Build the feature branch first and use its new explicit configuration rather than relying on automatic detection.
+
+## Pages alternative
+
 This browser app can use Cloudflare Pages' free plan. As checked on 21 November 2026, that plan allows 500 builds per month, one simultaneous build, 20,000 files per site and 25 MiB per file. Our app is static and needs no Pages Functions, database or paid runtime. A custom domain is optional; `pages.dev` is sufficient.
 
 Sources: [limits](https://developers.cloudflare.com/pages/platform/limits/), [PR previews](https://developers.cloudflare.com/pages/configuration/preview-deployments/), [Git integration](https://developers.cloudflare.com/pages/configuration/git-integration/).
